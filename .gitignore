@@ -1,0 +1,4 @@
+dist/
+files/bin/
+*.log
+ota.log

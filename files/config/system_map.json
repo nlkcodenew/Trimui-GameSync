@@ -1,0 +1,21 @@
+{
+  "_note": "Default mapping: Google Drive folder name -> local Roms/ folder code. Complete 16-system list verified from the user's 'Game Retro Backup' Drive folder (2026-10-15). User-editable. PortMaster is intentionally EXCLUDED from app scope (user decision 2026-10-15).",
+  "_unsupported_flag": "Systems the handheld cannot emulate (e.g. GAMECUBE) are still synced/stored but shown with an 'unsupported on this device' badge in the UI.",
+  "mapping": {
+    "Atari - 2600": "ATARI2600",
+    "NEC - TurboGrafx CD": "PCECD",
+    "NEC - TurboGrafx-16": "PCE",
+    "Nintendo - DS": "NDS",
+    "Nintendo - Game Boy Advance": "GBA",
+    "Nintendo - Game Boy Color": "GBC",
+    "Nintendo - GameCube": "GAMECUBE",
+    "SNK - NEO GEO": "NEOGEO",
+    "Sega - Dreamcast": "DC",
+    "Sega - Game Gear": "GG",
+    "Sega - Genesis": "MD",
+    "Sega - Saturn": "SATURN",
+    "Sega - Sega CD": "SEGACD",
+    "Sony - PS1": "PS",
+    "Sony - PSP": "PSP"
+  }
+}

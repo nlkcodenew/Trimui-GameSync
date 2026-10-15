@@ -1,0 +1,72 @@
+{
+  "files": [
+    {
+      "path": "DriveLinks.txt",
+      "sha256": "c8a9467337e8f6dc5576edbe25b297897c088f34a284ff592470712e3ea3bb97",
+      "size": 437
+    },
+    {
+      "path": "VERSION",
+      "sha256": "6ad9613a455798d6d92e5f5f390ab4baa70596bc869ed6b17f5cdd2b28635f06",
+      "size": 5
+    },
+    {
+      "path": "assets/NotoSans-Regular.ttf",
+      "sha256": "371924e7480d3d01807fdc1bd30442d0a6651e6b5ea546482f5883d613cf0419",
+      "size": 201644
+    },
+    {
+      "path": "assets/donate-qr.png",
+      "sha256": "d71fc80b49ec508abf6af5bc0a4c529307054ecc9caa3fd24d3a4a5a53bdc85a",
+      "size": 54770
+    },
+    {
+      "path": "bin/trimui-gamesync",
+      "sha256": "047750908f1e067a6abceca4c0c4c62a7a2d40e6bb4b913ede8b97caeb8dc836",
+      "size": 514456
+    },
+    {
+      "path": "certs/cacert.pem",
+      "sha256": "a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505",
+      "size": 188900
+    },
+    {
+      "path": "config.json",
+      "sha256": "9a562889aa3347a23f4e4d0f7f76ce86749109eea73971bca129915b62235577",
+      "size": 160
+    },
+    {
+      "path": "config/system_map.json",
+      "sha256": "24a2fdad27d1102fdcf28f39dadf3598a8fd94eac76fda3524d4344134c7b866",
+      "size": 946
+    },
+    {
+      "path": "icon.png",
+      "sha256": "0e2b5d1a775245c2d37fd6a9cdbdecfbbdbbc667071cb3e4de40a16436b203da",
+      "size": 6804
+    },
+    {
+      "path": "launch.sh",
+      "sha256": "af07b82130c38a8576047c55d96855cec67323f154ddc014fe532a182c1b5173",
+      "size": 2183
+    },
+    {
+      "path": "lib/libcrypto.so.1.1",
+      "sha256": "e40f8d5a4c1ca2c2fdfe0fe4c98f9d7f45cf200b3355a93b78b71f19a4cd25b1",
+      "size": 2875800
+    },
+    {
+      "path": "lib/libssl.so.1.1",
+      "sha256": "a8e40386762686f58a9dfb5115b8924050eff51fcb3393629d4f04ea50ec60c2",
+      "size": 630024
+    },
+    {
+      "path": "ota-update.sh",
+      "sha256": "9b16df619562f8ae4a90bcd2e22112745956e655cf53899e2fff02ac939da262",
+      "size": 9440
+    }
+  ],
+  "kid": "gs1",
+  "signature": "IcZDPUKutVZjrmj1qWVkC4AQtsTlWKA02WDknL2tRclsb2QUZnBkd5N643MIFTARZl4eMpuTohtHk0J438OkBQ",
+  "version": "0.1.0"
+}

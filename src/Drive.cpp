@@ -293,7 +293,7 @@ bool DriveClient::listRecursive(const std::string &rootFolderId,
     }
   }
   if (cancel) {
-    err.message = "Da huy.";
+    err.message = "Đã hủy bởi người dùng.";
     return false;
   }
   std::sort(out.begin(), out.end(), [](const DriveFile &a, const DriveFile &b) {

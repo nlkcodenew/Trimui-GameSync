@@ -524,6 +524,7 @@ std::atomic<bool> gScanCancel{false};
 std::atomic<bool> driveNetRunning{false};
 std::atomic<uint64_t> driveNetProgress{0};
 std::atomic<bool> driveNetDone{false};
+std::atomic<bool> driveNetCancel{false};  // B hủy khi đang quét Drive
 std::atomic<bool> driveNetWasRescan{false};  // true neu op vua xong la rescan
 std::atomic<uint64_t> driveNetRescanFiles{0};  // tong file rescan vua xong
 std::mutex driveNetMutex;
@@ -1085,7 +1086,7 @@ void drawHome() {
              fontSmall);
     y += Y(72);
   }
-  drawFooter("D-Pad Chọn · A Mở · Y Quét lại", "B Thoát");
+  drawFooter("D-Pad Chọn · A Mở · Y Đồng bộ Drive", "B Thoát");
 }
 
 void drawSysTabs() {
@@ -1233,7 +1234,10 @@ void drawDrive() {
              Y(620), color(150, 160, 176), fontSmall);
   }
   (void)total;
-  drawFooter("D-Pad Chọn · A Thực hiện", "B Về Home");
+  if (driveNetRunning)
+    drawFooter("D-Pad Chọn · A Thực hiện · Y Quét Drive", "B Hủy quét");
+  else
+    drawFooter("D-Pad Chọn · A Thực hiện · Y Quét Drive", "B Về Home");
 }
 
 void showConfirm(const std::string &title, const std::string &body,
@@ -1569,8 +1573,12 @@ void drawSync() {
                  X(430));
         drawText(e.system.empty() ? "Khác" : e.system, X(112), y + Y(33),
                  color(150, 160, 176), fontSmall);
-        drawText(diffStatusLabel(e.status), X(600), y + Y(15),
-                 statusColor(e.status), fontSmall);
+        {
+          // Badge mau trang thai (hoc RomCloud): cham tron mau + nhan chu
+          SDL_Color sc = statusColor(e.status);
+          fillRect(X(600), y + Y(20), X(16), X(16), sc);
+          drawText(diffStatusLabel(e.status), X(624), y + Y(15), sc, fontSmall);
+        }
         const uint64_t sz = (e.status == DiffStatus::LOCAL_ONLY ||
                              e.status == DiffStatus::SYNCED)
                                 ? e.localSize
@@ -1908,7 +1916,7 @@ void startDriveRescan() {
     std::string summary;
     uint64_t totalFiles = 0;
     bool allOk = true;
-    std::atomic<bool> cancel{false};
+    driveNetCancel = false;
     for (size_t i = 0; i < links.size(); ++i) {
       const std::string id = parseDriveFolderId(links[i]);
       if (id.empty()) {
@@ -1918,7 +1926,7 @@ void startDriveRescan() {
       }
       std::vector<DriveFile> files;
       DriveError err;
-      if (!client.listRecursive(id, sysMap, files, driveNetProgress, cancel, err)) {
+      if (!client.listRecursive(id, sysMap, files, driveNetProgress, driveNetCancel, err)) {
         summary +=
             "Nguồn " + std::to_string(i + 1) + ": LỖI " + err.message + "\n";
         allOk = false;
@@ -2008,7 +2016,7 @@ void handleScreenInput(const InputState &in) {
       if (target == Screen::Sync) syncTab = 1;  // mặc định tab "Máy thiếu"
       screen = target;
     }
-    if (in.y) startScan();
+    if (in.y) startDriveRescan();
     if (in.b) running = false;
     break;
   case Screen::Library: {
@@ -2060,7 +2068,14 @@ void handleScreenInput(const InputState &in) {
         startDriveCheck();
       }
     }
-    if (in.b) screen = Screen::Home;
+    if (in.y) startDriveRescan();  // Y: quét Drive nhanh
+    if (in.b) {
+      if (driveNetRunning) {
+        driveNetCancel = true;  // hủy quét Drive giữa chừng
+      } else {
+        screen = Screen::Home;
+      }
+    }
     break;
   }
   case Screen::Sync: {

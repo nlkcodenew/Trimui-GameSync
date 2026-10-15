@@ -72,10 +72,10 @@ bool isGroupExt(const std::string &ext) {
 
 const char *diffStatusLabel(DiffStatus s) {
   switch (s) {
-    case DiffStatus::SYNCED: return "✓ Đã đồng bộ";
-    case DiffStatus::REMOTE_ONLY: return "↓ Chỉ trên Drive";
-    case DiffStatus::LOCAL_ONLY: return "↑ Chỉ trên máy";
-    case DiffStatus::DIFFER: return "≠ Khác nhau";
+    case DiffStatus::SYNCED: return "Đã đồng bộ";
+    case DiffStatus::REMOTE_ONLY: return "↓ Máy thiếu";
+    case DiffStatus::LOCAL_ONLY: return "↑ Drive thiếu";
+    case DiffStatus::DIFFER: return "≠ Khác bản";
   }
   return "?";
 }

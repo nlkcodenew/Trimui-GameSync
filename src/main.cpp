@@ -443,8 +443,8 @@ const int kKeyRowCount = 6;
 // (P5: extension -> system mapping table lives in src/Fixer.* —
 // extMapDisplayRows() is the single source of truth for the Fix screen.)
 
-const char *kSyncTabs[] = {"Tất cả", "↓ Chỉ trên Drive", "↑ Chỉ trên máy",
-                           "≠ Khác nhau"};
+const char *kSyncTabs[] = {"Tất cả", "↓ Máy thiếu", "↑ Drive thiếu",
+                           "≠ Khác bản"};
 const int kSyncTabCount = 4;
 
 struct HomeAction {
@@ -468,7 +468,7 @@ int libTab = 0, libTabScroll = 0;
 bool libSearching = false;
 std::string libQuery;
 int driveSel = 0, driveScroll = 0;
-int syncTab = 0;
+int syncTab = 1;  // mặc định tab "Máy thiếu" (kiểu RomCloud)
 std::set<std::string> syncMarked;  // key: system + "/" + relPath
 // ---------------- P4: compare + download queue state ----------------
 std::vector<DiffEntry> gDiff;
@@ -527,7 +527,10 @@ std::atomic<bool> driveNetWasRescan{false};  // true neu op vua xong la rescan
 std::atomic<uint64_t> driveNetRescanFiles{0};  // tong file rescan vua xong
 std::mutex driveNetMutex;
 std::string driveNetTitle, driveNetMsg;  // guarded by driveNetMutex
+std::atomic<bool> pendingFullSync{false};  // chuỗi "Đồng bộ tất cả": scan → drive → so sánh
 // P3 forward declarations (defined before the input section)
+void startScan();
+void startDriveRescan();
 std::string maskApiKey(const std::string &k);
 uint64_t driveCachedCount(const std::string &folderId);
 std::atomic<uint64_t> scanFileCount{0};
@@ -1205,7 +1208,7 @@ void drawDrive() {
     }
     y += rowH + Y(10);
   }
-  const char *acts[3] = {"＋ Thêm link Drive", "⟳ Đồng bộ Drive",
+  const char *acts[3] = {"+ Thêm link Drive", "» Đồng bộ Drive",
                            "? Kiểm tra kết nối"};
   for (int a = 0; a < 3; ++a) {
     const int idx = static_cast<int>(gDriveLinks.size()) + a;
@@ -1304,6 +1307,79 @@ SDL_Color statusColor(DiffStatus st) {
   return color(200, 200, 200);
 }
 
+// Chuỗi "Đồng bộ tất cả" (nút Start ở màn hình Sync):
+// (a) quét game trên máy nếu chưa có, (b) quét Drive, (c) so sánh + báo kết quả.
+// Bước (b)/(c) được nối qua pendingFullSync trong main loop.
+void startFullSync() {
+  if (syncMode == SyncMode::Queue) return;  // đang ở màn hình tải
+  if (scanRunning || driveNetRunning) {
+    showDialog("Đang xử lý", "Vui lòng chờ tác vụ hiện tại xong.");
+    return;
+  }
+  if (resolveDriveApiKey().empty()) {
+    showDialog("Thiếu API key",
+               "Vào Cài đặt → Nhập API key Drive\n(hoặc đặt env GS_DRIVE_API_KEY).");
+    return;
+  }
+  if (gDriveLinks.empty()) {
+    showDialog("Chưa có nguồn", "Thêm link Drive trước đã.");
+    return;
+  }
+  pendingFullSync = true;
+  if (!scanDone) {
+    startScan();  // async → scanFinishedFlag → nối tiếp drive rescan
+  } else {
+    startDriveRescan();
+    if (!driveNetRunning) pendingFullSync = false;  // start thất bại
+  }
+}
+
+// Tải ngay 1 dòng (bấm A) kiểu RomCloud: không cần đánh dấu X trước.
+void downloadSingleEntry(const DiffEntry &e) {
+  if (e.status != DiffStatus::REMOTE_ONLY && e.status != DiffStatus::DIFFER)
+    return;  // chỉ tải được game trên Drive
+  const std::string key = resolveDriveApiKey();
+  if (key.empty()) {
+    showDialog("Thiếu API key",
+               "Vào Cài đặt → Nhập API key Drive\n(hoặc đặt env GS_DRIVE_API_KEY).");
+    return;
+  }
+  int skipped = 0;
+  const std::string romsDir = defaultRomsDir();
+  const std::vector<DownloadTask> tasks =
+      buildDownloadTasks(std::vector<DiffEntry>{e}, romsDir, skipped);
+  if (tasks.empty()) {
+    showDialog("Không tải được", "File này không tải được (tên file không an toàn?).");
+    return;
+  }
+  uint64_t total = 0;
+  for (const auto &t : tasks) total += t.size;
+  gQueue.reset(new DownloadQueue(key, appDirectory, romsDir));
+  gQueue->enqueue(tasks);
+  uint64_t need = 0, freeB = 0;
+  if (!gQueue->preflight(need, freeB)) {
+    char b[512];
+    snprintf(b, sizeof b,
+             "Cần %s (đã gồm 200MB dự phòng)\nTrống: %s\nBỏ bớt file rồi thử lại.",
+             formatBytes(need).c_str(), formatBytes(freeB).c_str());
+    showDialog("Không đủ dung lượng", b);
+    gQueue.reset();
+    return;
+  }
+  char b[768];
+  snprintf(b, sizeof b, "Tải \"%s\" (%s)\nvề Roms/%s\n\nA: Tải    B: Hủy",
+           e.name.c_str(), formatBytes(total).c_str(),
+           e.system.empty() ? "?" : e.system.c_str());
+  showConfirm("Tải game", b, [] {
+    queueAuthShown = false;
+    queueDoneHandled = false;
+    syncMode = SyncMode::Queue;
+    syncScroll = 0;
+    gQueue->start();
+    Logger::info("Single download started");
+  });
+}
+
 void startSyncFlow() {
   std::vector<DiffEntry> marked;
   {
@@ -1328,7 +1404,7 @@ void startSyncFlow() {
       buildDownloadTasks(marked, romsDir, skipped);
   if (tasks.empty()) {
     showDialog("Đồng bộ", "Các dòng đã đánh dấu không có gì để tải.\n(Chỉ tải "
-                          "được: ↓ Chỉ trên Drive, ≠ Khác nhau)");
+                          "được: ↓ Máy thiếu, ≠ Khác bản)");
     return;
   }
   uint64_t total = 0;
@@ -1506,28 +1582,39 @@ void drawSync() {
     }
   }
   if (view.empty()) {
-    const char *hint = !scanDone ? "Nhấn Y ở Home để quét thư viện trên máy."
+    const char *hint = !scanDone ? "Bấm Start để đồng bộ tất cả."
                        : gDriveLinks.empty()
-                           ? "Thêm link Drive rồi quét ở màn hình Drive."
-                           : "Vào Drive → bấm \"Đồng bộ Drive\" trước.";
+                           ? "Thêm link Drive rồi bấm Start."
+                           : "Bấm Start để quét Drive và so sánh.";
     drawEmptyBox(viewY, Y(120), "Không có dòng nào", hint);
   }
-  uint64_t dlBytes = 0;
-  {
-    std::lock_guard<std::mutex> lk(gDiffMutex);
-    for (const auto &e : gDiff) {
-      if (syncMarked.count(syncRowKey(e)) == 0) continue;
-      if (e.status == DiffStatus::REMOTE_ONLY ||
-          e.status == DiffStatus::DIFFER)
-        dlBytes += e.remoteSize;
+  if (scanRunning || driveNetRunning) {
+    char p[160];
+    if (scanRunning)
+      snprintf(p, sizeof p, "Đang quét game trên máy… %llu file",
+               (unsigned long long)scanProgress.load());
+    else
+      snprintf(p, sizeof p, "Đang lấy game trên Drive… %llu file",
+               (unsigned long long)driveNetProgress.load());
+    drawText(p, X(40), Y(620), color(242, 200, 120), fontSmall);
+  } else {
+    uint64_t dlBytes = 0;
+    {
+      std::lock_guard<std::mutex> lk(gDiffMutex);
+      for (const auto &e : gDiff) {
+        if (syncMarked.count(syncRowKey(e)) == 0) continue;
+        if (e.status == DiffStatus::REMOTE_ONLY ||
+            e.status == DiffStatus::DIFFER)
+          dlBytes += e.remoteSize;
+      }
     }
+    char buf[128];
+    snprintf(buf, sizeof buf, "Đã đánh dấu: %zu dòng · sẽ tải %s",
+             syncMarked.size(), formatBytes(dlBytes).c_str());
+    drawText(buf, X(40), Y(620), color(150, 160, 176), fontSmall);
   }
-  char buf[128];
-  snprintf(buf, sizeof buf, "Đã đánh dấu: %zu dòng · sẽ tải %s",
-           syncMarked.size(), formatBytes(dlBytes).c_str());
-  drawText(buf, X(40), Y(620), color(150, 160, 176), fontSmall);
-  drawFooter("◀▶ Lọc · ▲▼ Chọn · X Đánh dấu · Y Đồng bộ · Start So sánh lại",
-             "B Về Home");
+  drawFooter("A Tải ngay · X Đánh dấu · Y Tải đã đánh dấu · Start Đồng bộ tất cả",
+             "◀▶ Lọc · ▲▼ Chọn · B Về Home");
 }
 
 void drawFix() {
@@ -1915,6 +2002,7 @@ void handleScreenInput(const InputState &in) {
         }
         target = cached > 0 ? Screen::Sync : Screen::Drive;
       }
+      if (target == Screen::Sync) syncTab = 1;  // mặc định tab "Máy thiếu"
       screen = target;
     }
     if (in.y) startScan();
@@ -2013,10 +2101,18 @@ void handleScreenInput(const InputState &in) {
           else
             syncMarked.insert(k);
         }
+        if (in.a) {
+          DiffEntry e;
+          {
+            std::lock_guard<std::mutex> lk(gDiffMutex);
+            e = gDiff[view[syncSel]];
+          }
+          downloadSingleEntry(e);  // bấm A vào dòng để tải luôn
+        }
       }
     }
     if (in.y) startSyncFlow();
-    if (in.start) syncDirty = true;
+    if (in.start) startFullSync();
     if (in.b) screen = Screen::Home;
     break;
   }
@@ -2319,6 +2415,11 @@ int main(int argc, char **argv) {
       refreshLibView();
       syncDirty = true;
       fixDirty = true;
+      if (pendingFullSync) {
+        // Chuỗi "Đồng bộ tất cả": quét máy xong → quét Drive.
+        startDriveRescan();
+        if (!driveNetRunning) pendingFullSync = false;  // không start được
+      }
     }
     if (driveNetDone.exchange(false)) {
       std::string t, m;
@@ -2327,13 +2428,39 @@ int main(int argc, char **argv) {
         t = driveNetTitle;
         m = driveNetMsg;
       }
-      if (driveNetWasRescan.exchange(false)) {
+      const bool wasRescan = driveNetWasRescan.exchange(false);
+      if (pendingFullSync.exchange(false)) {
+        // Chuỗi "Đồng bộ tất cả": Drive xong → so sánh → báo máy thiếu/drive thiếu.
+        recomputeDiff();
+        syncTab = 1;  // về tab "Máy thiếu"
+        screen = Screen::Sync;
+        uint64_t nRemote = 0, nLocal = 0, nSynced = 0;
+        {
+          std::lock_guard<std::mutex> lk(gDiffMutex);
+          for (const auto &e : gDiff) {
+            if (e.status == DiffStatus::REMOTE_ONLY)
+              ++nRemote;
+            else if (e.status == DiffStatus::LOCAL_ONLY)
+              ++nLocal;
+            else if (e.status == DiffStatus::SYNCED)
+              ++nSynced;
+          }
+        }
+        char b[320];
+        snprintf(b, sizeof b,
+                 "↓ Máy thiếu: %llu game\n↑ Drive thiếu: %llu game\nĐã đồng bộ: "
+                 "%llu game\n\nBấm A vào từng dòng để tải ngay.",
+                 (unsigned long long)nRemote, (unsigned long long)nLocal,
+                 (unsigned long long)nSynced);
+        showDialog("Đồng bộ xong", b);
+      } else if (wasRescan) {
         // Vua dong bo Drive xong: hoi co sang man hinh So sanh khong.
         const uint64_t n = driveNetRescanFiles.load();
         std::string b = "Đã lấy " + std::to_string(n) + " file từ Drive.\n\n" +
                         m + "\n\nSang màn hình So sánh để tải game về?";
         showConfirm(t, b, [] {
           screen = Screen::Sync;
+          syncTab = 1;
           syncDirty = true;
         });
       } else {

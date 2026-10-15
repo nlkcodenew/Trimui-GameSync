@@ -1903,7 +1903,6 @@ void startDriveRescan() {
     std::string summary;
     uint64_t totalFiles = 0;
     bool allOk = true;
-    std::atomic<uint64_t> prog{0};
     std::atomic<bool> cancel{false};
     for (size_t i = 0; i < links.size(); ++i) {
       const std::string id = parseDriveFolderId(links[i]);
@@ -1914,7 +1913,7 @@ void startDriveRescan() {
       }
       std::vector<DriveFile> files;
       DriveError err;
-      if (!client.listRecursive(id, sysMap, files, prog, cancel, err)) {
+      if (!client.listRecursive(id, sysMap, files, driveNetProgress, cancel, err)) {
         summary +=
             "Nguồn " + std::to_string(i + 1) + ": LỖI " + err.message + "\n";
         allOk = false;
@@ -1924,7 +1923,6 @@ void startDriveRescan() {
       totalFiles += files.size();
       summary += "Nguồn " + std::to_string(i + 1) + ": " +
                  std::to_string(files.size()) + " file\n";
-      driveNetProgress = prog.load();
     }
     summary += "Tổng: " + std::to_string(totalFiles) + " file (đã lưu cache).";
     driveNetRescanFiles = totalFiles;

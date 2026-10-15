@@ -1222,8 +1222,10 @@ void drawDrive() {
   }
   if (driveNetRunning) {
     char p[96];
-    snprintf(p, sizeof p, "Đang xử lý Drive… %llu file",
-             (unsigned long long)driveNetProgress.load());
+    const char *spin = "|/-\\";
+    snprintf(p, sizeof p, "Đang xử lý Drive… %llu file %c",
+             (unsigned long long)driveNetProgress.load(),
+             spin[(SDL_GetTicks() / 250) % 4]);
     drawText(p, X(40), Y(620), color(242, 200, 120), fontSmall);
   } else if (gDriveLinks.empty()) {
     drawText("Chưa có nguồn nào — chọn \"Thêm link Drive\" bên dưới.", X(40),
@@ -1590,12 +1592,14 @@ void drawSync() {
   }
   if (scanRunning || driveNetRunning) {
     char p[160];
+    const char *spin = "|/-\\";
+    const char sc = spin[(SDL_GetTicks() / 250) % 4];
     if (scanRunning)
-      snprintf(p, sizeof p, "Đang quét game trên máy… %llu file",
-               (unsigned long long)scanProgress.load());
+      snprintf(p, sizeof p, "Đang quét game trên máy… %llu file %c",
+               (unsigned long long)scanProgress.load(), sc);
     else
-      snprintf(p, sizeof p, "Đang lấy game trên Drive… %llu file",
-               (unsigned long long)driveNetProgress.load());
+      snprintf(p, sizeof p, "Đang lấy game trên Drive… %llu file %c",
+               (unsigned long long)driveNetProgress.load(), sc);
     drawText(p, X(40), Y(620), color(242, 200, 120), fontSmall);
   } else {
     uint64_t dlBytes = 0;

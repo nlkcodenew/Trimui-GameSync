@@ -523,6 +523,8 @@ std::atomic<bool> gScanCancel{false};
 std::atomic<bool> driveNetRunning{false};
 std::atomic<uint64_t> driveNetProgress{0};
 std::atomic<bool> driveNetDone{false};
+std::atomic<bool> driveNetWasRescan{false};  // true neu op vua xong la rescan
+std::atomic<uint64_t> driveNetRescanFiles{0};  // tong file rescan vua xong
 std::mutex driveNetMutex;
 std::string driveNetTitle, driveNetMsg;  // guarded by driveNetMutex
 // P3 forward declarations (defined before the input section)
@@ -1203,7 +1205,7 @@ void drawDrive() {
     }
     y += rowH + Y(10);
   }
-  const char *acts[3] = {"＋ Thêm link Drive", "⟳ Quét lại Drive",
+  const char *acts[3] = {"＋ Thêm link Drive", "⟳ Đồng bộ Drive",
                            "? Kiểm tra kết nối"};
   for (int a = 0; a < 3; ++a) {
     const int idx = static_cast<int>(gDriveLinks.size()) + a;
@@ -1507,7 +1509,7 @@ void drawSync() {
     const char *hint = !scanDone ? "Nhấn Y ở Home để quét thư viện trên máy."
                        : gDriveLinks.empty()
                            ? "Thêm link Drive rồi quét ở màn hình Drive."
-                           : "Vào Drive → Quét lại để lấy danh sách file.";
+                           : "Vào Drive → bấm \"Đồng bộ Drive\" trước.";
     drawEmptyBox(viewY, Y(120), "Không có dòng nào", hint);
   }
   uint64_t dlBytes = 0;
@@ -1838,6 +1840,8 @@ void startDriveRescan() {
       driveNetProgress = prog.load();
     }
     summary += "Tổng: " + std::to_string(totalFiles) + " file (đã lưu cache).";
+    driveNetRescanFiles = totalFiles;
+    driveNetWasRescan = true;
     finishDriveNet(allOk ? "Quét Drive xong" : "Quét Drive (có lỗi)", summary);
     Logger::info("Drive rescan: " + std::to_string(totalFiles) + " files");
   }).detach();
@@ -1889,6 +1893,7 @@ void startDriveCheck() {
                  std::to_string(nDirs) + " thư mục, " +
                  std::to_string(kids.size() - nDirs) + " file)\n";
     }
+    driveNetWasRescan = false;
     finishDriveNet(allOk ? "Kết nối OK" : "Kiểm tra (có lỗi)", summary);
   }).detach();
 }
@@ -1900,7 +1905,18 @@ void handleScreenInput(const InputState &in) {
   case Screen::Home:
     if (in.up) moveSelection(-1, kHomeActionCount, homeSel);
     if (in.down) moveSelection(1, kHomeActionCount, homeSel);
-    if (in.a) screen = kHomeActions[homeSel].target;
+    if (in.a) {
+      Screen target = kHomeActions[homeSel].target;
+      if (homeSel == 2) {  // nut "Dong bo": chua co cache Drive -> sang Drive
+        uint64_t cached = 0;
+        for (const auto &link : gDriveLinks) {
+          const std::string fid = parseDriveFolderId(link);
+          if (!fid.empty()) cached += driveCachedCount(fid);
+        }
+        target = cached > 0 ? Screen::Sync : Screen::Drive;
+      }
+      screen = target;
+    }
     if (in.y) startScan();
     if (in.b) running = false;
     break;
@@ -2311,7 +2327,18 @@ int main(int argc, char **argv) {
         t = driveNetTitle;
         m = driveNetMsg;
       }
-      showDialog(t, m);
+      if (driveNetWasRescan.exchange(false)) {
+        // Vua dong bo Drive xong: hoi co sang man hinh So sanh khong.
+        const uint64_t n = driveNetRescanFiles.load();
+        std::string b = "Đã lấy " + std::to_string(n) + " file từ Drive.\n\n" +
+                        m + "\n\nSang màn hình So sánh để tải game về?";
+        showConfirm(t, b, [] {
+          screen = Screen::Sync;
+          syncDirty = true;
+        });
+      } else {
+        showDialog(t, m);
+      }
       syncDirty = true;
     }
     const InputState input = pollInput();

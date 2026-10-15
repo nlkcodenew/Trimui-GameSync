@@ -22,7 +22,7 @@
     },
     {
       "path": "bin/trimui-gamesync",
-      "sha256": "6c083b501acd429dda8c3989d904d00dc974ef09d82d0356e19d7a0577f1ac97",
+      "sha256": "039de8194cc52aa271cae0e40dab991f920008cb6d26b1977b5be421a71bac04",
       "size": 522648
     },
     {
@@ -47,8 +47,8 @@
     },
     {
       "path": "launch.sh",
-      "sha256": "af07b82130c38a8576047c55d96855cec67323f154ddc014fe532a182c1b5173",
-      "size": 2183
+      "sha256": "cc6efab703da7fa1a7dbaddc9aa0f8793f3d57cc9d9ea5d0bc337f0120a20300",
+      "size": 2588
     },
     {
       "path": "lib/libcrypto.so.1.1",
@@ -67,6 +67,6 @@
     }
   ],
   "kid": "gs1",
-  "signature": "CYnAGyuK0b3SIn7xwFaxsB8_cpYAFRB4oaMNN-EmE0FxQmG8HX_BTLPrffCIi9wvuBtYk3-c73gJaTja4M9XCA",
-  "version": "0.2.1"
+  "signature": "g_YTW5rt_fb8p9G8uwXH9ubOKDKMI4f6zb6HsaR3sQ3PIzGH4HAtIbkUuj3cu24cmFof9zP6bSzFpfKixQfIDg",
+  "version": "0.3.0"
 }

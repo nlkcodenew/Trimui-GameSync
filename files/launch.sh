@@ -55,8 +55,21 @@ if [ -z "$TRIMUI_GS_NO_OTA" ] && [ ! -f "$APP/data/.no-ota" ] && [ -f "$APP/ota-
   OTA_PID=$!
 fi
 
-"$APP/bin/trimui-gamesync" >> "$APP/gamesync.log" 2>&1
-CODE=$?
+# Vong relaunch (hoc tu LottoForecast-Pro): app thoat 42 khi OTA cai xong
+# ban moi -> chay lai ngay, khong can user mo lai tay.
+export TRIMUI_GS_LAUNCH_LOOP=1
+while :; do
+  "$APP/bin/trimui-gamesync" >> "$APP/gamesync.log" 2>&1
+  CODE=$?
+  case "$CODE" in
+    42)
+      echo "[ota] restart requested (exit 42) -> relaunch" >> "$APP/gamesync.log" 2>&1
+      rm -f "$APP/.ota-status" "$APP/.ota-status.tmp" 2>/dev/null
+      sleep 1
+      ;;
+    *) break;;
+  esac
+done
 
 [ -n "${OTA_PID:-}" ] && kill "$OTA_PID" 2>/dev/null
 rm -f /tmp/stay_alive 2>/dev/null || true

@@ -18,6 +18,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <functional>
@@ -2412,6 +2413,27 @@ int main(int argc, char **argv) {
             appDirectory);
 
   while (running) {
+    // OTA tự động (học từ LottoForecast-Pro): ota-update.sh ghi "done <ver>"
+    // vào .ota-status khi cài xong -> thoát 42 để launch.sh chạy lại bản mới.
+    {
+      static Uint32 lastOtaCheck = 0;
+      Uint32 nowTick = SDL_GetTicks();
+      if (nowTick - lastOtaCheck > 5000) {
+        lastOtaCheck = nowTick;
+        std::ifstream ost(appDirectory + "/.ota-status");
+        if (ost) {
+          std::string ostLine;
+          std::getline(ost, ostLine);
+          if (ostLine.rfind("done ", 0) == 0) {
+            Logger::info("OTA xong (" + ostLine + ") -> restart app (exit 42)");
+            if (std::getenv("TRIMUI_GS_LAUNCH_LOOP")) {
+              std::exit(42);
+            }
+            std::remove((appDirectory + "/.ota-status").c_str());
+          }
+        }
+      }
+    }
     if (scanFinishedFlag.exchange(false)) {
       rebuildLibTabs();
       refreshLibView();

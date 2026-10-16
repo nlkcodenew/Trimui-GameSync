@@ -1,0 +1,10 @@
+# Trimui-GameSync default game sources.
+#
+# One Google Drive folder link per line. Lines starting with '#' are ignored.
+# The app reads this seed file on first launch and copies it to
+# <app>/data/DriveLinks.txt — edit that copy afterwards (OTA updates never
+# overwrite your data directory).
+#
+# Your own private game library. Not shared publicly (copyright).
+
+https://drive.google.com/drive/folders/1b67C2hqP5amYX3ZmAGCYd_7PeY5HoenM

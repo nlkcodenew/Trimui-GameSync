@@ -7,8 +7,8 @@
     },
     {
       "path": "VERSION",
-      "sha256": "911fc0c48cb0c70601db5775a9bef1b740dc4cc9f9b46389b9f0563fe7eb94d7",
-      "size": 5
+      "sha256": "79e3f22ca37c7fdf4c29ae3648d6b008c3cb6547260a453409275470919dc674",
+      "size": 6
     },
     {
       "path": "assets/NotoSans-Regular.ttf",
@@ -42,8 +42,8 @@
     },
     {
       "path": "icon.png",
-      "sha256": "0e2b5d1a775245c2d37fd6a9cdbdecfbbdbbc667071cb3e4de40a16436b203da",
-      "size": 6804
+      "sha256": "7a27122a9260a3fbfa70c3addefcaf0da83ab2722f9bd473456d53a4352e07c1",
+      "size": 57659
     },
     {
       "path": "launch.sh",
@@ -67,6 +67,6 @@
     }
   ],
   "kid": "gs1",
-  "signature": "g_YTW5rt_fb8p9G8uwXH9ubOKDKMI4f6zb6HsaR3sQ3PIzGH4HAtIbkUuj3cu24cmFof9zP6bSzFpfKixQfIDg",
-  "version": "0.3.0"
+  "signature": "BPcCav5asmCI_JOgd7PMrymtk2K6YSwihwwkukhelQgAJx2u4QN4-tPLFBRua9bDtz21htjzUb7AbhfG102sBA",
+  "version": "0.3.1"
 }
